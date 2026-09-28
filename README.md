@@ -60,4 +60,12 @@ Sugar Sugar.flac: 100
 
 # Screenshots
 
-"Fake" flac versus real flac
+<img width="768" height="384" alt="realfake" src="https://github.com/user-attachments/assets/2cf86c83-f202-43e5-8fa1-0ac0970a5d47" />
+
+`fakeflac-go` plot of "fake" versus real flac
+
+---
+
+<img width="2288" height="1103" alt="realfakespec" src="https://github.com/user-attachments/assets/5b2398c3-97d4-481a-9b7d-004d23d10e58" />
+
+Example spectrograms of "fake" and real flacs
