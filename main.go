@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"image/color"
 	"math"
 	"os"
@@ -27,9 +28,13 @@ const sampleRate int = 44100
 const maxtime int = 30
 
 func main() {
-	spectrum := transform(convert(os.Args[1]))
 	// pcmSamples := convert("/mnt/slab/media/music/Chris Hadfield - Space Sessions Songs from a Tin Can (2015) [Flac]/01 - Big Smoke.flac")
+	spectrum := transform(convert(os.Args[1]))
+	plotSpec(spectrum, "test")
+	fmt.Printf("%s: %d\n", os.Args[1], findCutoff(normalizeSpectrum(spectrum), sampleRate/100, 1.25, 1.1))
+}
 
+func plotSpec(spectrum []float64, filename string) {
 	points := make(plotter.XYs, len(spectrum))
 	for x, y := range spectrum {
 		points[x].X = float64(x)
@@ -52,26 +57,16 @@ func main() {
 
 	s.GlyphStyle = draw.GlyphStyle{
 		Color:  color.Black,
-		Radius: 0.5,
+		Radius: 0.2,
 		Shape:  draw.CircleGlyph{},
 	}
 	p.Add(s)
 
-	err = p.Save(4*vg.Inch, 4*vg.Inch, "points.png")
+	err = p.Save(4*vg.Inch, 4*vg.Inch, filename+".png")
 	if err != nil {
 		panic(err)
 	}
 
-	// var test bytes.Buffer
-	// err := binary.Write(&test, binary.LittleEndian, pcmSamples)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// err = os.WriteFile(filepath.Join(os.TempDir(), "test.pcm"), test.Bytes(), 0644)
-	// if err != nil {
-	// 	panic(err)
-	// }
 }
 
 func int2float(intSlice []int16) (floatSlice []float64) {
@@ -99,13 +94,12 @@ func normalizeSpectrum(spectrum []float64) (normSpectrum []float64) {
 		normSpectrum[i] = math.Log10(normSpectrum[i]) // Normalize each magnitude
 	}
 	normSpectrum = boxcar(normSpectrum) // Apply boxcar filter
-
 	return normSpectrum
 }
 
 // Boxcar moving average filter, so as to keep length(spectrum) == samplerate / 2
 func boxcar(spectrum []float64) (avgSpectrum []float64) {
-	window := sampleRate / 100
+	window := sampleRate / 100 / 2
 	n := len(spectrum)
 	avgSpectrum = make([]float64, n)
 
@@ -128,6 +122,18 @@ func boxcar(spectrum []float64) (avgSpectrum []float64) {
 	return avgSpectrum
 }
 
+func findCutoff(spectrum []float64, dx int, diff float64, limit float64) (cutoff int) {
+	end := len(spectrum) - 1
+	for i := end; i >= dx; i-- {
+		if spectrum[i]/spectrum[end] > limit && spectrum[i-dx]-spectrum[i] > diff {
+			end = i - dx
+			break
+		}
+	}
+	cutoff = 2 * (end + 1) * 100 / sampleRate
+	return cutoff
+}
+
 func transform(pcmSamples []int16) (spectrum []float64) {
 	window := fft.Hann(sampleRate)
 	audio := int2float(pcmSamples)
@@ -135,14 +141,13 @@ func transform(pcmSamples []int16) (spectrum []float64) {
 	spectrum = make([]float64, sampleRate)
 	audioSecond := make([]float64, sampleRate)
 
-	for t := 0; t < seconds; t++ {
+	for t := range seconds {
 		floats.MulTo(audioSecond, window, audio[t*sampleRate:(t+1)*sampleRate])
 		spectrumSecond := fft.FFTReal(audioSecond)
 		spectrum = addSpectrum(spectrumSecond, spectrum)
 	}
 
 	spectrum = spectrum[0 : sampleRate/2]
-	spectrum = normalizeSpectrum(spectrum)
 	return spectrum
 }
 
@@ -154,10 +159,6 @@ func convert(inputfile string) (pcmSamples []int16) {
 	)
 	defer cncl()
 
-	// ext := filepath.Ext(inputfile)
-	// outputFile := filepath.Join(os.TempDir(), filepath.Base(strings.TrimSuffix(inputfile, ext)))
-	// outputFile += ".pcm"
-
 	var pcmBuffer bytes.Buffer
 	pcmReceiver := bufio.NewWriter(&pcmBuffer)
 
@@ -166,7 +167,7 @@ func convert(inputfile string) (pcmSamples []int16) {
 		// Stdin:  os.Stdin,
 		// Stdout: os.Stdout,
 		Stdout: pcmReceiver,
-		Stderr: os.Stderr,
+		// Stderr: os.Stderr,
 		Args: []string{"-i", inputfile,
 			"-vn",
 			"-ar", "44100",
