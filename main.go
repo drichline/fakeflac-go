@@ -41,8 +41,6 @@ const defaultdiff float64 = 1.25
 const defaultlimit float64 = 1.1
 const defaultboxcardx int = 500
 
-var boxcarWindow int
-
 func main() {
 	// Set up CLI flags
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
@@ -50,13 +48,13 @@ func main() {
 	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit")
 	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit")
 	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Boxcar filter window size")
-	boxcarWindow = (sampleRate / *boxcardxFlag) / 2
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
 		flag.PrintDefaults()
 	}
 	// Parse file inputs
 	flag.Parse()
+	boxcarWindow := (sampleRate / *boxcardxFlag) / 2
 	files := flag.Args()
 	files = matchExt(files) // Discard non-audio files
 
@@ -73,7 +71,7 @@ func main() {
 				panic(err)
 			}
 
-			spectrum := normalizeSpectrum(transform(convert(file)))
+			spectrum := normalizeSpectrum(transform(convert(file)), boxcarWindow)
 
 			if *plotFlag {
 				plotSpec(spectrum, filepath.Base(file))
@@ -180,8 +178,7 @@ func addSpectrum(spectrumSecond []complex128, spectrum []float64) (spectrumSum [
 }
 
 // Boxcar moving average filter, so as to keep length(spectrum) == samplerate / 2
-func boxcar(spectrum []float64) (avgSpectrum []float64) {
-	window := boxcarWindow
+func boxcar(spectrum []float64, window int) (avgSpectrum []float64) {
 	n := len(spectrum)
 	avgSpectrum = make([]float64, n)
 
@@ -204,7 +201,7 @@ func boxcar(spectrum []float64) (avgSpectrum []float64) {
 	return avgSpectrum
 }
 
-func normalizeSpectrum(spectrum []float64) (normSpectrum []float64) {
+func normalizeSpectrum(spectrum []float64, boxcarWindow int) (normSpectrum []float64) {
 	seconds := float64(min(len(spectrum)*2/sampleRate, maxtime)) // spectrum is only 0:samplerate/2 long, but contains 30s of summed spectra
 	normSpectrum = make([]float64, len(spectrum))
 
@@ -212,7 +209,7 @@ func normalizeSpectrum(spectrum []float64) (normSpectrum []float64) {
 		normSpectrum[i] = item / seconds              // Average each magnitude over sample time
 		normSpectrum[i] = math.Log10(normSpectrum[i]) // Normalize each magnitude
 	}
-	normSpectrum = boxcar(normSpectrum) // Apply boxcar filter
+	normSpectrum = boxcar(normSpectrum, boxcarWindow) // Apply boxcar filter
 	return normSpectrum
 }
 
