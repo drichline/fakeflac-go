@@ -106,7 +106,7 @@ func matchExt(files []string) (audioFiles []string) {
 	})
 
 	if len(audioFiles) == 0 {
-		panic("Supported file types:" + strings.Join(allowedExt, " "))
+		panic("Supported file types: " + strings.Join(allowedExt, " "))
 
 	}
 
