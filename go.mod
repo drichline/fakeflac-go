@@ -6,6 +6,7 @@ require (
 	codeberg.org/gruf/go-ffmpreg v0.6.22
 	github.com/go-fft/fft v0.0.0-20260831114610-598cacbd5c9a
 	github.com/tetratelabs/wazero v1.12.0
+	golang.org/x/sync v0.16.0
 	gonum.org/v1/gonum v0.17.0
 	gonum.org/v1/plot v0.17.0
 )

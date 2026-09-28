@@ -12,14 +12,17 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"syscall"
 
 	"codeberg.org/gruf/go-ffmpreg/ffmpreg"
 	"codeberg.org/gruf/go-ffmpreg/wasm"
 	"github.com/go-fft/fft"
 	"github.com/tetratelabs/wazero"
+	"golang.org/x/sync/errgroup"
 	"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
@@ -56,20 +59,35 @@ func main() {
 	files := flag.Args()
 	files = matchExt(files) // Discard non-audio files
 
+	// Limit goroutines to # of CPU threads
+	var workerPool errgroup.Group
+	workerPool.SetLimit(runtime.NumCPU())
+	var printLock sync.Mutex
+
 	for _, file := range files {
-		file, err := filepath.Abs(file)
-		if err != nil {
-			panic(err)
-		}
+		workerPool.Go(func() error {
+			println("entered function")
+			file, err := filepath.Abs(file)
+			if err != nil {
+				panic(err)
+			}
 
-		spectrum := normalizeSpectrum(transform(convert(file)))
+			spectrum := normalizeSpectrum(transform(convert(file)))
 
-		if *plotFlag {
-			plotSpec(spectrum, filepath.Base(file))
-		}
-		// Return frequency cutoff percentage
-		fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag))
+			if *plotFlag {
+				plotSpec(spectrum, filepath.Base(file))
+			}
 
+			printLock.Lock()
+			// Return frequency cutoff percentage
+			fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag))
+			printLock.Unlock()
+
+			return nil
+		})
+	}
+	if err := workerPool.Wait(); err != nil {
+		panic(err)
 	}
 }
 
