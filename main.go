@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -26,21 +27,33 @@ import (
 	"gonum.org/v1/plot/vg/draw"
 )
 
+// Sample rate used for PCM waveform conversion
 const sampleRate int = 44100 // Note: Frequency range is half of sample rate
 const maxtime int = 30
-const boxcarWindow = (sampleRate / 500) / 2 // Controls boxcar filter
-const dx int = sampleRate / 100
-const diff float64 = 1.25
-const limit float64 = 1.1
+
+// Emperical constant defaults
+const defaultdx int = sampleRate / 100
+const defaultdiff float64 = 1.25
+const defaultlimit float64 = 1.1
+const defaultboxcardx int = 500
+
+var boxcarWindow int
 
 func main() {
+	// Set up CLI flags and parse input
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
+	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff ")
+	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit (default 1.25)")
+	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio limit (default 1.1)")
+	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Boxcar filter window size (default 500)")
+	boxcarWindow = (sampleRate / *boxcardxFlag) / 2
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTION] [FILE]\nOptions:\n")
+		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 	files := flag.Args()
+	files = matchExt(files)
 
 	for _, file := range files {
 		file, err := filepath.Abs(file)
@@ -54,10 +67,30 @@ func main() {
 			// plotSpec(spectrum, strings.TrimSuffix(filepath.Base(file), filepath.Ext(filepath.Base(file)))) // Strip audio file extension
 			plotSpec(spectrum, filepath.Base(file))
 		}
-		fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum)) // Emperical constants derived from fakeflac.py
+		fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag)) // Emperical constants derived from fakeflac.py
+
+	}
+}
+
+func matchExt(files []string) (audioFiles []string) {
+	allowedExt := []string{
+		".flac", ".wav", ".w64", ".aif", ".aiff", ".aifc", ".au", ".snd",
+		".mp3", ".mp2", ".aac", ".m4a", ".m4b", ".mp4", ".ac3", ".eac3",
+		".ogg", ".oga", ".opus", ".spx", ".mka", ".weba", ".webm",
+		".wma", ".ape", ".wv", ".tta", ".tak", ".shn", ".mpc",
+		".caf", ".amr", ".dts", ".voc", ".dsf", ".dff", ".alac",
+	}
+	audioFiles = files
+	audioFiles = slices.DeleteFunc(audioFiles, func(name string) bool {
+		return !slices.Contains(allowedExt, strings.ToLower(filepath.Ext(name)))
+	})
+
+	if len(audioFiles) == 0 {
+		panic("Supported file types:" + strings.Join(allowedExt, " "))
 
 	}
 
+	return audioFiles
 }
 
 func plotSpec(spectrum []float64, filename string) {
@@ -95,6 +128,19 @@ func plotSpec(spectrum []float64, filename string) {
 
 }
 
+func findCutoff(spectrum []float64, dx int, diff float64, limit float64) (cutoff int) {
+	end := len(spectrum) - 1
+	for i := end; i >= dx; i-- {
+		// Ratio test AND drop test must trigger to declare cutoff found
+		if spectrum[i]/spectrum[end] < limit && spectrum[i-dx]-spectrum[i] > diff {
+			end = i - dx
+			break
+		}
+	}
+	cutoff = (end + 1) * 100 / len(spectrum)
+	return cutoff
+}
+
 func int2float(intSlice []int16) (floatSlice []float64) {
 	floatSlice = make([]float64, len(intSlice))
 	for i, item := range intSlice {
@@ -109,18 +155,6 @@ func addSpectrum(spectrumSecond []complex128, spectrum []float64) (spectrumSum [
 		spectrumSum[i] = spectrum[i] + math.Abs(real(item))
 	}
 	return spectrumSum
-}
-
-func normalizeSpectrum(spectrum []float64) (normSpectrum []float64) {
-	seconds := float64(min(len(spectrum)*2/sampleRate, maxtime)) // spectrum is only 0:samplerate/2 long, but contains 30s of summed spectra
-	normSpectrum = make([]float64, len(spectrum))
-
-	for i, item := range spectrum {
-		normSpectrum[i] = item / seconds              // Average each magnitude over sample time
-		normSpectrum[i] = math.Log10(normSpectrum[i]) // Normalize each magnitude
-	}
-	normSpectrum = boxcar(normSpectrum) // Apply boxcar filter
-	return normSpectrum
 }
 
 // Boxcar moving average filter, so as to keep length(spectrum) == samplerate / 2
@@ -148,17 +182,16 @@ func boxcar(spectrum []float64) (avgSpectrum []float64) {
 	return avgSpectrum
 }
 
-func findCutoff(spectrum []float64) (cutoff int) {
-	end := len(spectrum) - 1
-	for i := end; i >= dx; i-- {
-		// Ratio test AND drop test must trigger to declare cutoff found
-		if spectrum[i]/spectrum[end] < limit && spectrum[i-dx]-spectrum[i] > diff {
-			end = i - dx
-			break
-		}
+func normalizeSpectrum(spectrum []float64) (normSpectrum []float64) {
+	seconds := float64(min(len(spectrum)*2/sampleRate, maxtime)) // spectrum is only 0:samplerate/2 long, but contains 30s of summed spectra
+	normSpectrum = make([]float64, len(spectrum))
+
+	for i, item := range spectrum {
+		normSpectrum[i] = item / seconds              // Average each magnitude over sample time
+		normSpectrum[i] = math.Log10(normSpectrum[i]) // Normalize each magnitude
 	}
-	cutoff = (end + 1) * 100 / len(spectrum)
-	return cutoff
+	normSpectrum = boxcar(normSpectrum) // Apply boxcar filter
+	return normSpectrum
 }
 
 func transform(pcmSamples []int16) (spectrum []float64) {
