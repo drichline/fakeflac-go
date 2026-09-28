@@ -14,7 +14,7 @@ Algorithm ported from [mevdschee/fakeflac](https://github.com/mevdschee/fakeflac
 - Many lossless and lossy audio formats supported
 - Tunable frequency cutoff detection parameters
 - Portable single binary
-- Embedded WASM ffmpeg build
+- Embedded [WASM ffmpeg build](https://codeberg.org/gruf/go-ffmpreg/)
 
 ## Requirements
 
@@ -60,7 +60,7 @@ Options:
 
 ## Supported file types
 
-All input files are resampled to a 44.1 kHz 16 bit PCM stream by ffmpeg, so that the frequency range is normalized to 22 kHz (the upper limit of human ears. 
+All input files are resampled to a 44.1 kHz 16 bit PCM stream by ffmpeg, so that the frequency range is normalized to 22 kHz (the upper limit of human ears). 
 
 ```
 ".flac", ".wav", ".w64", ".aif", ".aiff", ".aifc", ".au", ".snd",
