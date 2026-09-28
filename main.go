@@ -5,11 +5,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"image/color"
 	"math"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -24,14 +26,38 @@ import (
 	"gonum.org/v1/plot/vg/draw"
 )
 
-const sampleRate int = 44100
+const sampleRate int = 44100 // Note: Frequency range is half of sample rate
 const maxtime int = 30
+const boxcarWindow = (sampleRate / 500) / 2 // Controls boxcar filter
+const dx int = sampleRate / 100
+const diff float64 = 1.25
+const limit float64 = 1.1
 
 func main() {
-	// pcmSamples := convert("/mnt/slab/media/music/Chris Hadfield - Space Sessions Songs from a Tin Can (2015) [Flac]/01 - Big Smoke.flac")
-	spectrum := transform(convert(os.Args[1]))
-	plotSpec(spectrum, "test")
-	fmt.Printf("%s: %d\n", os.Args[1], findCutoff(normalizeSpectrum(spectrum), sampleRate/100, 1.25, 1.1))
+	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTION] [FILE]\nOptions:\n")
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+	files := flag.Args()
+
+	for _, file := range files {
+		file, err := filepath.Abs(file)
+		if err != nil {
+			panic(err)
+		}
+
+		spectrum := normalizeSpectrum(transform(convert(file)))
+
+		if *plotFlag {
+			// plotSpec(spectrum, strings.TrimSuffix(filepath.Base(file), filepath.Ext(filepath.Base(file)))) // Strip audio file extension
+			plotSpec(spectrum, filepath.Base(file))
+		}
+		fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum)) // Emperical constants derived from fakeflac.py
+
+	}
+
 }
 
 func plotSpec(spectrum []float64, filename string) {
@@ -99,7 +125,7 @@ func normalizeSpectrum(spectrum []float64) (normSpectrum []float64) {
 
 // Boxcar moving average filter, so as to keep length(spectrum) == samplerate / 2
 func boxcar(spectrum []float64) (avgSpectrum []float64) {
-	window := sampleRate / 100 / 2
+	window := boxcarWindow
 	n := len(spectrum)
 	avgSpectrum = make([]float64, n)
 
@@ -122,15 +148,16 @@ func boxcar(spectrum []float64) (avgSpectrum []float64) {
 	return avgSpectrum
 }
 
-func findCutoff(spectrum []float64, dx int, diff float64, limit float64) (cutoff int) {
+func findCutoff(spectrum []float64) (cutoff int) {
 	end := len(spectrum) - 1
 	for i := end; i >= dx; i-- {
-		if spectrum[i]/spectrum[end] > limit && spectrum[i-dx]-spectrum[i] > diff {
+		// Ratio test AND drop test must trigger to declare cutoff found
+		if spectrum[i]/spectrum[end] < limit && spectrum[i-dx]-spectrum[i] > diff {
 			end = i - dx
 			break
 		}
 	}
-	cutoff = 2 * (end + 1) * 100 / sampleRate
+	cutoff = (end + 1) * 100 / len(spectrum)
 	return cutoff
 }
 
