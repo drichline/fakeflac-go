@@ -40,20 +40,21 @@ const defaultboxcardx int = 500
 var boxcarWindow int
 
 func main() {
-	// Set up CLI flags and parse input
+	// Set up CLI flags
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
 	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff ")
 	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit (default 1.25)")
-	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio limit (default 1.1)")
+	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit (default 1.1)")
 	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Boxcar filter window size (default 500)")
 	boxcarWindow = (sampleRate / *boxcardxFlag) / 2
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
 		flag.PrintDefaults()
 	}
+	// Parse file inputs
 	flag.Parse()
 	files := flag.Args()
-	files = matchExt(files)
+	files = matchExt(files) // Discard non-audio files
 
 	for _, file := range files {
 		file, err := filepath.Abs(file)
@@ -64,10 +65,10 @@ func main() {
 		spectrum := normalizeSpectrum(transform(convert(file)))
 
 		if *plotFlag {
-			// plotSpec(spectrum, strings.TrimSuffix(filepath.Base(file), filepath.Ext(filepath.Base(file)))) // Strip audio file extension
 			plotSpec(spectrum, filepath.Base(file))
 		}
-		fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag)) // Emperical constants derived from fakeflac.py
+		// Return frequency cutoff percentage
+		fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag))
 
 	}
 }
@@ -219,6 +220,7 @@ func convert(inputfile string) (pcmSamples []int16) {
 	)
 	defer cncl()
 
+	// Buffer to intercept PCM stream from ffmpreg output
 	var pcmBuffer bytes.Buffer
 	pcmReceiver := bufio.NewWriter(&pcmBuffer)
 
