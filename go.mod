@@ -1,4 +1,4 @@
-module fakeflac-go
+module github.com/drichline/fakeflac-go
 
 go 1.27.1
 
