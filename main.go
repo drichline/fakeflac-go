@@ -46,10 +46,10 @@ var boxcarWindow int
 func main() {
 	// Set up CLI flags
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
-	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff ")
-	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit (default 1.25)")
-	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit (default 1.1)")
-	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Boxcar filter window size (default 500)")
+	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff test window size in bins")
+	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit")
+	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit")
+	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Boxcar filter window size")
 	boxcarWindow = (sampleRate / *boxcardxFlag) / 2
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
