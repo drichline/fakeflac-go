@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -62,13 +63,13 @@ func main() {
 	// Limit goroutines to # of CPU threads
 	var workerPool errgroup.Group
 	workerPool.SetLimit(runtime.NumCPU())
-	var printLock sync.Mutex
+	var printLock sync.Mutex // Block to prevent concurrent prints
 
 	for _, file := range files {
 		workerPool.Go(func() error {
-			println("entered function")
 			file, err := filepath.Abs(file)
 			if err != nil {
+				println("Error getting working directory")
 				panic(err)
 			}
 
@@ -121,6 +122,7 @@ func plotSpec(spectrum []float64, filename string) {
 
 	s, err := plotter.NewScatter(points)
 	if err != nil {
+		println("Failed to construct scatter plot")
 		panic(err)
 	}
 
@@ -142,6 +144,7 @@ func plotSpec(spectrum []float64, filename string) {
 
 	err = p.Save(4*vg.Inch, 4*vg.Inch, filename+".png")
 	if err != nil {
+		println("Failed to save plot")
 		panic(err)
 	}
 
@@ -250,11 +253,11 @@ func convert(inputfile string) (pcmSamples []int16) {
 		// Stderr: os.Stderr,
 		Args: []string{"-i", inputfile,
 			"-vn",
-			"-ar", "44100",
+			"-ar", strconv.Itoa(sampleRate),
 			"-ac", "1",
 			"-acodec", "pcm_s16le",
 			"-f", "s16le",
-			"pipe:1"},
+			"pipe:1"}, // Output PCM stream to buffer
 		Config: func(cfg wazero.ModuleConfig) wazero.ModuleConfig {
 			for _, kv := range os.Environ() {
 				i := strings.IndexByte(kv, '=')
@@ -266,6 +269,7 @@ func convert(inputfile string) (pcmSamples []int16) {
 		},
 	})
 	if err != nil {
+		println("ffmpeg PCM encoding failed")
 		panic(err)
 	}
 
