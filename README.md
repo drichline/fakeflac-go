@@ -17,6 +17,7 @@ Algorithm ported from [mevdschee/fakeflac](https://github.com/mevdschee/fakeflac
 - Tunable frequency cutoff detection parameters
 - Portable single binary
 - Embedded [WASM ffmpeg build](https://codeberg.org/gruf/go-ffmpreg/)
+- Ability to use system ffmpeg install
 
 ## Requirements
 
@@ -26,6 +27,7 @@ Algorithm ported from [mevdschee/fakeflac](https://github.com/mevdschee/fakeflac
 - Source installation: Go >= v1.21
 
 Note: ffmpeg is embedded in `fakeflac-go` and thus not required to build or run
+* If ffmpeg is installed, `-ffmpeg` uses the system ffmpeg for significantly improved performance, see [Usage](#usage).
 
 ## Installation
 
@@ -41,11 +43,17 @@ Untested prebuilt binaries for Linux x86/ARM, MacOS Intel/ARM, and Windows 10+ a
 
 ## Quick Start
 
+
+`$ fakeflac-go fake.flac real.flac `
+
+Output:
+
 ```
-$ fakeflac-go fake.flac real.flac 
 fake.flac: 73
 real.flac: 100
 ```
+
+<a name="usage"></a>
 ## Usage
 
 `fakeflac-go` accepts a space-separated list of filenames, and will ignore unsupported (e.g. text) files. Both lossless (e.g. `.flac`, `.alac`, `.wav`) and lossy (e.g. `.mp3`) formats are supported. For each file, `fakeflac-go` will output a score of 0-100 to the terminal, with 100 being a "perfect flac." 
@@ -58,6 +66,10 @@ The resulting numeric score represents the percentage of "real" frequencies up t
 
 * Note that by default, `GOMAXPROCS` limits the maximum number of __active__ workers to the number of logical CPU cores, regardless of the limit set with `-threads`.
 
+`-ffmpeg` uses the system's ffmpeg instead of embedded ffmpeg, greatly improving performance. 
+
+* Note that `ffmpeg` must be available in the system's `$PATH`
+
 `-boxcardx`, `-diff`, `-dx`, and `-limit`: see [Tuning](#tuning)
 
 ```
@@ -67,6 +79,8 @@ Options:
         Enable spectrum plot output
   -threads int
         Limit number of concurrent processes
+  -ffmpeg
+        Use system-installed ffmpeg if available
   -boxcardx int
         Number of boxcar filter spectrum bins (default 500)
   -diff float

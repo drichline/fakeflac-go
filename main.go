@@ -10,14 +10,13 @@ import (
 	"image/color"
 	"math"
 	"os"
-	"os/signal"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 
 	"codeberg.org/gruf/go-ffmpreg/ffmpreg"
 	"codeberg.org/gruf/go-ffmpreg/wasm"
@@ -45,6 +44,7 @@ func main() {
 	// Set up CLI flags
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
 	var threadFlag = flag.Int("threads", runtime.NumCPU(), "Limit number of concurrent processes")
+	var ffmpegFlag = flag.Bool("ffmpeg", false, "Use native ffmpeg if available")
 	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff test window size in Hz")
 	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit")
 	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit")
@@ -53,8 +53,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
 		flag.PrintDefaults()
 	}
-	// Parse file inputs
+	// Parse CLI arguments
 	flag.Parse()
+	if len(flag.Args()) == 0 {
+		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nTry 'fakeflac-go -help' for more information.\n")
+		os.Exit(1)
+	}
 	boxcarWindow := (sampleRate / *boxcardxFlag) / 2
 	files := flag.Args()
 	files = matchExt(files) // Discard non-audio files
@@ -72,7 +76,7 @@ func main() {
 				panic(err)
 			}
 
-			spectrum := normalizeSpectrum(transform(convert(file)), boxcarWindow)
+			spectrum := normalizeSpectrum(transform(convert(file, *ffmpegFlag)), boxcarWindow)
 
 			if *plotFlag {
 				plotSpec(spectrum, filepath.Base(file))
@@ -105,8 +109,8 @@ func matchExt(files []string) (audioFiles []string) {
 	})
 
 	if len(audioFiles) == 0 {
-		panic("Supported file types: " + strings.Join(allowedExt, " "))
-
+		println("Supported file types: " + strings.Join(allowedExt, " "))
+		os.Exit(1)
 	}
 
 	return audioFiles
@@ -231,46 +235,75 @@ func transform(pcmSamples []int16) (spectrum []float64) {
 	return spectrum
 }
 
-func convert(inputfile string) (pcmSamples []int16) {
-	ctx, cncl := signal.NotifyContext(
-		context.Background(),
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-	defer cncl()
-
+func convert(inputfile string, ffmpegFlag bool) (pcmSamples []int16) {
 	// Buffer to intercept PCM stream from ffmpreg output
 	var pcmBuffer bytes.Buffer
 	pcmReceiver := bufio.NewWriter(&pcmBuffer)
 
-	_, err := ffmpreg.Run(ctx, wasm.Args{
-		Name: "ffmpeg",
-		// Stdin:  os.Stdin,
-		// Stdout: os.Stdout,
-		Stdout: pcmReceiver,
-		// Stderr: os.Stderr,
-		Args: []string{"-i", inputfile,
-			"-vn",
-			"-ar", strconv.Itoa(sampleRate),
-			"-ac", "1",
-			"-acodec", "pcm_s16le",
-			"-f", "s16le",
-			"pipe:1"}, // Output PCM stream to buffer
-		Config: func(cfg wazero.ModuleConfig) wazero.ModuleConfig {
-			for _, kv := range os.Environ() {
-				i := strings.IndexByte(kv, '=')
-				cfg = cfg.WithEnv(kv[:i], kv[i+1:])
-			}
-			fscfg := wazero.NewFSConfig()
-			fscfg = fscfg.WithDirMount("/", "/")
-			return cfg.WithFSConfig(fscfg)
-		},
-	})
-	if err != nil {
-		println("ffmpeg PCM encoding failed")
-		panic(err)
+	// ffmpeg arguments
+	args := []string{"-i", inputfile,
+		"-vn", // Discard video streams
+		"-ar", strconv.Itoa(sampleRate),
+		"-ac", "1", // Mono non-interleaved PCM
+		"-acodec", "pcm_s16le", // Raw 16 bit PCM stream
+		"-f", "s16le", // No container; raw bytes
+		"pipe:1"} // Output PCM stream to buffer
+
+	// Embedded WASM ffmpeg
+	embedded := func() {
+		ctx := context.Background()
+		_, err := ffmpreg.Run(ctx, wasm.Args{
+			Name: "ffmpeg",
+			// Stdin:  os.Stdin,
+			// Stdout: os.Stdout,
+			Stdout: pcmReceiver,
+			// Stderr: os.Stderr,
+			Args: args,
+			Config: func(cfg wazero.ModuleConfig) wazero.ModuleConfig {
+				// Unused ffmpeg env var handling
+				// for _, kv := range os.Environ() {
+				// 	i := strings.IndexByte(kv, '=')
+				// 	cfg = cfg.WithEnv(kv[:i], kv[i+1:])
+				// }
+				fscfg := wazero.NewFSConfig()
+				fscfg = fscfg.WithReadOnlyDirMount("/", "/")
+				return cfg.WithFSConfig(fscfg)
+			},
+		})
+		if err != nil {
+			println("Embedded ffmpeg PCM encoding failed on file " + filepath.Base(inputfile))
+			panic(err)
+		}
 	}
 
+	// Shell out to system ffmpeg
+	native := func() {
+		ffmpeg := exec.Command("ffmpeg", args...)
+		ffmpeg.Stdout = &pcmBuffer
+		err := ffmpeg.Run()
+		if err != nil {
+			println("Native ffmpeg PCM encoding failed on file " + filepath.Base(inputfile))
+			panic(err)
+		}
+	}
+
+	// Default whether ffmpeg is available
+	ffmpegAvailable := func() bool {
+		_, err := exec.LookPath("ffmpeg")
+		return err == nil
+	}
+
+	// Default to embedded ffmpeg
+	if ffmpegFlag && ffmpegAvailable() {
+		native()
+	} else if ffmpegFlag {
+		println("ffmpeg not detected; falling back to native ffmpeg")
+		embedded()
+	} else {
+		embedded()
+	}
+
+	// Convert raw PCM stream into a slice of 16-bit integer samples
 	pcmSamples = make([]int16, len(pcmBuffer.Bytes())/2)
 	for i := range pcmSamples {
 		pcmSamples[i] = int16(binary.LittleEndian.Uint16(pcmBuffer.Bytes()[i*2:]))
