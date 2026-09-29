@@ -33,6 +33,8 @@ Note: ffmpeg is embedded in `fakeflac-go` and thus not required to build or run
 
 `go install github.com/drichline/fakeflac-go@v0.0.2`
 
+This will compile and install the binary to `$GOPATH/bin`, where `$GOPATH` defaults to `~/go` on Linux/MacOS and `%USERPROFILE%\go` on Windows. You may have to add this directory to your system's `PATH`.
+
 ### Binary installation
 
 Untested prebuilt binaries for Linux x86/ARM, MacOS Intel/ARM, and Windows 10+ are provided on the [releases page](https://github.com/drichline/fakeflac-go/releases); use at your own risk. 
@@ -52,7 +54,9 @@ The resulting numeric score represents the percentage of "real" frequencies up t
 
 `-plot` saves the spectrum plot of each file to the current directory, named after the input file with `.png` appended. 
 
-`-threads` sets the maximum number of active Goroutine workers. Note that by default, `GOMAXPROCS` limits the maximum number of active workers to the number of logical CPU cores, regardless of the limit set with `-threads`.
+`-threads` sets the maximum number of active Goroutine workers. Defaults to the number of logical CPU cores present. 
+
+* Note that by default, `GOMAXPROCS` limits the maximum number of __active__ workers to the number of logical CPU cores, regardless of the limit set with `-threads`.
 
 `-boxcardx`, `-diff`, `-dx`, and `-limit`: see [Tuning](#tuning)
 
