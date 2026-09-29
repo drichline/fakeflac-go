@@ -1,6 +1,6 @@
 # fakeflac-go
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/drichline/fakeflac-go.svg)](https://pkg.go.dev/github.com/drichline/fakeflac-go) [![Go Version](https://img.shields.io/github/go-mod/go-version/drichline/fakeflac-go)](https://golang.org) [![License](https://img.shields.io/github/license/drichline/fakeflac-go)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/drichline/fakeflac-go?color=blue)](https://github.com/drichline/fakeflac-go/releases/latest) [![License](https://img.shields.io/github/license/drichline/fakeflac-go)](LICENSE) [![Go Version](https://img.shields.io/github/go-mod/go-version/drichline/fakeflac-go)](https://golang.org) [![Go Reference](https://pkg.go.dev/badge/github.com/drichline/fakeflac-go.svg)](https://pkg.go.dev/github.com/drichline/fakeflac-go)
 
 A command-line tool to detect "fake" lossless audio files and optionally plot their frequency distribution. Analysis of lossy files is also supported. 
 
