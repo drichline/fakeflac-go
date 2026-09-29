@@ -1,6 +1,12 @@
 #!/bin/sh
 
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <version>" >&2
+    exit 1
+fi
+
 mkdir -p dist
+rm -r dist/*
 cd dist
 
 # macOS
