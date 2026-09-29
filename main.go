@@ -44,10 +44,11 @@ const defaultboxcardx int = 500
 func main() {
 	// Set up CLI flags
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
-	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff test window size in bins")
+	var threadFlag = flag.Int("threads", runtime.NumCPU(), "Limit number of concurrent processes")
+	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff test window size in Hz")
 	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit")
 	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit")
-	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Boxcar filter window size")
+	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Number of boxcar filter spectrum bins")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
 		flag.PrintDefaults()
@@ -60,7 +61,7 @@ func main() {
 
 	// Limit goroutines to # of CPU threads
 	var workerPool errgroup.Group
-	workerPool.SetLimit(runtime.NumCPU())
+	workerPool.SetLimit(*threadFlag)
 	var printLock sync.Mutex // Block to prevent concurrent prints
 
 	for _, file := range files {
