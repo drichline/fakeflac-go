@@ -287,7 +287,7 @@ func convert(inputfile string, ffmpegFlag bool) (pcmSamples []int16) {
 		}
 	}
 
-	// Default whether ffmpeg is available
+	// Determine whether ffmpeg is available
 	ffmpegAvailable := func() bool {
 		_, err := exec.LookPath("ffmpeg")
 		return err == nil
@@ -297,7 +297,7 @@ func convert(inputfile string, ffmpegFlag bool) (pcmSamples []int16) {
 	if ffmpegFlag && ffmpegAvailable() {
 		native()
 	} else if ffmpegFlag {
-		println("ffmpeg not detected; falling back to native ffmpeg")
+		println("ffmpeg not detected; falling back to embedded ffmpeg")
 		embedded()
 	} else {
 		embedded()
