@@ -11,7 +11,6 @@ rm fakeflac-go-$1
 # macOS Apple Silicon
 # GOOS=darwin GOARCH=arm64 go build -o myprog-darwin-arm64 .
 GOOS=darwin GOARCH=arm64 go build -o fakeflac-go-$1 ..
-cd dist
 zip fakeflac-go_darwin_arm64.zip fakeflac-go-$1
 rm fakeflac-go-$1
 
