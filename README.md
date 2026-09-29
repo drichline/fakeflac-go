@@ -1,5 +1,7 @@
 # fakeflac-go
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/drichline/fakeflac-go.svg)](https://pkg.go.dev/github.com/drichline/fakeflac-go) [![Go Version](https://img.shields.io/github/go-mod/go-version/drichline/fakeflac-go)](https://golang.org) [![License](https://img.shields.io/github/license/drichline/fakeflac-go)](LICENSE)
+
 A command-line tool to detect "fake" lossless audio files and optionally plot their frequency distribution. Analysis of lossy files is also supported. 
 
 `fakeflac-go` estimates the percentage of the audio spectrum effectively remaining after a bad transcode from a lossy source.
@@ -46,7 +48,7 @@ real.flac: 100
 
 `fakeflac-go` accepts a space-separated list of filenames, and will ignore unsupported (e.g. text) files. Both lossless (e.g. `.flac`, `.alac`, `.wav`) and lossy (e.g. `.mp3`) formats are supported. For each file, `fakeflac-go` will output a score of 0-100 to the terminal, with 100 being a "perfect flac." 
 
-The resulting numeric score represents the percentage of "real" frequencies up to 22 kHz present in the input file. Note that scores are only an estimate and may not be accurate for some edge-cases and lossy encoders, see [Limitations](##limitations). 
+The resulting numeric score represents the percentage of "real" frequencies up to 22 kHz present in the input file. Note that scores are only an estimate and may not be accurate for some edge-cases and lossy encoders, see [Limitations](#limitations). 
 
 `-plot` saves the spectrum plot of each file to the current directory, named after the input file with `.png` appended. 
 
@@ -86,7 +88,7 @@ All input files are resampled to a 44.1 kHz 16 bit PCM stream by ffmpeg, so that
 <a name="limitations"></a>
 ## Known limitations
 
-Similar to the original `fakeflac.py`, `fakeflac.go` tends to produce false negatives (i.e. incorrect scores of 100) for some lossy encodes. Specifically, encodes that have sufficiently low magnitude at mid-high frequencies relative to the noise floor, and lack a steep drop-off in magnitude at the cutoff point. This can occur when audio is badly transcoded several times, very poor quality, or naturally very quiet in the upper frequencies, e.g. piano music. 
+Similar to the original `fakeflac.py`, `fakeflac-go` tends to produce false negatives (i.e. incorrect scores of 100) for some lossy encodes. Specifically, encodes that have sufficiently low magnitude at mid-high frequencies relative to the noise floor, and lack a steep drop-off in magnitude at the cutoff point. This can occur when audio is badly transcoded several times, very poor quality, or naturally very quiet in the upper frequencies, e.g. piano music. 
 
 Future versions of `fakeflac-go` may include improved cutoff detection tests that use e.g. variance to detect a lowpassed noise floor. 
 
