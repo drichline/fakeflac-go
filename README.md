@@ -19,17 +19,6 @@ Algorithm ported from [mevdschee/fakeflac](https://github.com/mevdschee/fakeflac
 - Embedded [WASM ffmpeg build](https://codeberg.org/gruf/go-ffmpreg/)
 - Ability to use system ffmpeg install
 
-## Requirements
-
-- Linux/UNIX, Windows 10+, or MacOS 10.15+
-- x86_64, ARM v6/v7/64, or Apple Silicon CPU
-- 1-4 GB of free RAM for most operations
-- Source installation: Go >= v1.21
-
-Note: ffmpeg is embedded in `fakeflac-go` and thus not required to build or run
-
-* If ffmpeg is installed, `-ffmpeg` uses the system ffmpeg for significantly improved performance, see [Usage](#usage).
-
 ## Installation
 
 ### Source installation
@@ -41,6 +30,18 @@ This will compile and install the binary to `$GOPATH/bin`, where `$GOPATH` defau
 ### Binary installation
 
 Untested prebuilt binaries for Linux x86/ARM, MacOS Intel/ARM, and Windows 10+ are provided on the [releases page](https://github.com/drichline/fakeflac-go/releases); use at your own risk. 
+
+## Requirements
+
+- Linux/UNIX, Windows 10+, or MacOS 10.15+
+- x86_64, ARM v6/v7/64, or Apple Silicon CPU
+- 1-4 GB of free RAM for most operations
+- Source installation: Go >= v1.27.1
+
+Note: ffmpeg is embedded in `fakeflac-go` and thus not required to build or run
+
+* If ffmpeg is installed, `-ffmpeg` uses the system ffmpeg for significantly improved performance, see [Usage](#usage).
+
 
 ## Quick Start
 
@@ -65,7 +66,7 @@ The resulting numeric score represents the percentage of "real" frequencies up t
 
 `-threads` sets the maximum number of active Goroutine workers. Defaults to the number of logical CPU cores present. 
 
-* Note that by default, `GOMAXPROCS` limits the maximum number of __active__ workers to the number of logical CPU cores, regardless of the limit set with `-threads`.
+* Note that by default, `$GOMAXPROCS` limits the maximum number of __active__ workers to the number of logical CPU cores, regardless of the limit set with `-threads`.
 
 `-ffmpeg` uses the system's ffmpeg instead of embedded ffmpeg, greatly improving performance. 
 
