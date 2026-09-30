@@ -50,13 +50,13 @@ func main() {
 	var limitFlag = flag.Float64("limit", defaultlimit, "Lowpass cutoff magnitude ratio test limit")
 	var boxcardxFlag = flag.Int("boxcardx", defaultboxcardx, "Number of boxcar filter spectrum bins")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nOptions:\n")
+		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILES]\nOptions:\n")
 		flag.PrintDefaults()
 	}
 	// Parse CLI arguments
 	flag.Parse()
 	if len(flag.Args()) == 0 {
-		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nTry 'fakeflac-go -help' for more information.\n")
+		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILES]\nTry 'fakeflac-go -help' for more information.\n")
 		os.Exit(1)
 	}
 	threads := runtime.GOMAXPROCS(max(*threadFlag, -*threadFlag))
