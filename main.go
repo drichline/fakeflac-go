@@ -59,13 +59,14 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILE]\nTry 'fakeflac-go -help' for more information.\n")
 		os.Exit(1)
 	}
+	threads := runtime.GOMAXPROCS(max(*threadFlag, -*threadFlag))
 	boxcarWindow := (sampleRate / *boxcardxFlag) / 2
 	files := flag.Args()
 	files = matchExt(files) // Discard non-audio files
 
 	// Limit goroutines to # of CPU threads
 	var workerPool errgroup.Group
-	workerPool.SetLimit(*threadFlag)
+	workerPool.SetLimit(threads)
 	var printLock sync.Mutex // Block to prevent concurrent prints
 
 	for _, file := range files {
