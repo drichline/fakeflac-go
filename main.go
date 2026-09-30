@@ -77,14 +77,15 @@ func main() {
 			}
 
 			spectrum := normalizeSpectrum(transform(convert(file, *ffmpegFlag)), boxcarWindow)
+			cutoff := findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag)
 
 			if *plotFlag {
 				plotSpec(spectrum, filepath.Base(file))
 			}
 
-			printLock.Lock()
 			// Return frequency cutoff percentage
-			fmt.Printf("%s: %d\n", filepath.Base(file), findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag))
+			printLock.Lock()
+			fmt.Printf("%s: %d\n", filepath.Base(file), cutoff)
 			printLock.Unlock()
 
 			return nil
