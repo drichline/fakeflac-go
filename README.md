@@ -23,7 +23,7 @@ Algorithm ported from [mevdschee/fakeflac](https://github.com/mevdschee/fakeflac
 
 ### Source installation
 
-`go install github.com/drichline/fakeflac-go@v0.1.0`
+`go install github.com/drichline/fakeflac-go@v0.1.1`
 
 This will compile and install the binary to `$GOPATH/bin`, where `$GOPATH` defaults to `~/go` on Linux/MacOS and `%USERPROFILE%\go` on Windows. You may have to add this directory to your system's `PATH`.
 
