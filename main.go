@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"slices"
 	"strconv"
 	"strings"
@@ -40,8 +41,17 @@ const defaultdiff float64 = 1.25
 const defaultlimit float64 = 1.1
 const defaultboxcardx int = 500
 
+func getVersion() string {
+	if buildInfo, ok := debug.ReadBuildInfo(); ok && buildInfo.Main.Version != "" { // Set from git tag by go install
+		return buildInfo.Main.Version // Appends +dirty if built in a git repo with uncommitted changes
+	}
+	return "devel" // Fallback if building from a bare main.go
+}
+
 func main() {
 	// Set up CLI flags
+	var versionFlag = flag.Bool("version", false, "Display version and exit")
+	var bnuuyFlag = flag.Bool("bnuuy", false, "")
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
 	var threadFlag = flag.Int("threads", runtime.NumCPU(), "Limit number of concurrent processes")
 	var ffmpegFlag = flag.Bool("ffmpeg", false, "Use native ffmpeg if available")
@@ -55,10 +65,21 @@ func main() {
 	}
 	// Parse CLI arguments
 	flag.Parse()
+	if *versionFlag {
+		println(getVersion())
+		os.Exit(0)
+	}
+
+	if *bnuuyFlag {
+		bnuuy()
+		os.Exit(0)
+	}
+
 	if len(flag.Args()) == 0 {
 		fmt.Fprintf(os.Stderr, "Usage: fakeflac-go [OPTIONS] [FILES]\nTry 'fakeflac-go -help' for more information.\n")
 		os.Exit(1)
 	}
+
 	threads := runtime.GOMAXPROCS(max(*threadFlag, -*threadFlag))
 	boxcarWindow := (sampleRate / *boxcardxFlag) / 2
 	files := flag.Args()
@@ -233,7 +254,7 @@ func transform(pcmSamples []int16) (spectrum []float64) {
 		spectrum = addSpectrum(spectrumSecond, spectrum)
 	}
 
-	spectrum = spectrum[0 : sampleRate/2]
+	spectrum = spectrum[0 : sampleRate/2] // Ignore non-audible 22-44 kHz range; it's a mirror image of the 0-22 kHz range
 	return spectrum
 }
 
@@ -311,4 +332,26 @@ func convert(inputfile string, ffmpegFlag bool) (pcmSamples []int16) {
 		pcmSamples[i] = int16(binary.LittleEndian.Uint16(pcmBuffer.Bytes()[i*2:]))
 	}
 	return pcmSamples
+}
+
+func bnuuy() {
+	bunnyArt := `
+                               __             
+                      /\    .-" /             
+                     /  ; .'  .'              
+                    :   :/  .'                
+                     \  ;-.'          ??????? 
+        .--""""--..__/     '.        ??     ??
+      .'           .'    'o  \             ?? 
+     /                    '   ;          ???  
+    :                  \      :         ??    
+  .-;        -.         '.__.-'               
+ :  ;          \     ,   ;              ??    
+ '._:           ;   :   (                     
+     \/  .__    ;    \   '-.                  
+  bug ;     "-,/_..--"'-..__)                 
+      '""--.._:                               
+`
+	println(bunnyArt)
+	println("What are bunnies? We just don't know")
 }
