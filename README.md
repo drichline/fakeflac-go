@@ -23,17 +23,17 @@ Algorithm ported from [mevdschee/fakeflac](https://github.com/mevdschee/fakeflac
 
 ### Source installation
 
-`go install github.com/drichline/fakeflac-go@v0.1.4`
+`go install github.com/drichline/fakeflac-go@v0.1.5`
 
 This will compile and install the binary to `$GOPATH/bin`, where `$GOPATH` defaults to `~/go` on Linux/MacOS and `%USERPROFILE%\go` on Windows. You may have to add this directory to your system's `PATH`.
 
 ### Docker/Podman
 
-`docker run --rm -v ./:/files ghcr.io/drichline/fakeflac-go:v0.1.4 [OPTIONS] [FILES]`
+`docker run --rm -v ./:/files ghcr.io/drichline/fakeflac-go:v0.1.5 [OPTIONS] [FILES]`
 
 For systems using podman:
 
-`podman run --rm -v ./:/files ghcr.io/drichline/fakeflac-go:v0.1.4 [OPTIONS] [FILES]`
+`podman run --rm -v ./:/files ghcr.io/drichline/fakeflac-go:v0.1.5 [OPTIONS] [FILES]`
 
 Ensure the command is run from inside the directory containing the audio files, or adjust the volume mount directory. 
 
@@ -90,7 +90,7 @@ Options:
   -plot
         Enable spectrum plot output
   -threads int
-        Limit number of concurrent processes
+        Set number of concurrent processes
   -ffmpeg
         Use system-installed ffmpeg if available
   -boxcardx int
