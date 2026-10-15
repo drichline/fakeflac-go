@@ -53,7 +53,7 @@ func main() {
 	var versionFlag = flag.Bool("version", false, "Display version and exit")
 	var bnuuyFlag = flag.Bool("bnuuy", false, "")
 	var plotFlag = flag.Bool("plot", false, "Enable spectrum plot output")
-	var threadFlag = flag.Int("threads", runtime.NumCPU(), "Limit number of concurrent processes")
+	var threadFlag = flag.Int("threads", runtime.NumCPU(), "Set number of concurrent processes")
 	var ffmpegFlag = flag.Bool("ffmpeg", false, "Use native ffmpeg if available")
 	var dxFlag = flag.Int("dx", defaultdx, "Lowpass cutoff test window size in Hz")
 	var diffFlag = flag.Float64("diff", defaultdiff, "Lowpass cutoff magnitude drop test limit")
@@ -98,7 +98,8 @@ func main() {
 				panic(err)
 			}
 
-			spectrum := normalizeSpectrum(transform(convert(file, *ffmpegFlag)), boxcarWindow)
+			spectrum, seconds := transform(convert(file, *ffmpegFlag))
+			spectrum = normalizeSpectrum(spectrum, seconds, boxcarWindow)
 			cutoff := findCutoff(spectrum, *dxFlag, *diffFlag, *limitFlag)
 
 			if *plotFlag {
@@ -229,22 +230,21 @@ func boxcar(spectrum []float64, window int) (avgSpectrum []float64) {
 	return avgSpectrum
 }
 
-func normalizeSpectrum(spectrum []float64, boxcarWindow int) (normSpectrum []float64) {
-	seconds := float64(min(len(spectrum)*2/sampleRate, maxtime)) // spectrum is only 0:samplerate/2 long, but contains 30s of summed spectra
+func normalizeSpectrum(spectrum []float64, seconds int, boxcarWindow int) (normSpectrum []float64) {
 	normSpectrum = make([]float64, len(spectrum))
-
+	floatSeconds := float64(seconds)
 	for i, item := range spectrum {
-		normSpectrum[i] = item / seconds              // Average each magnitude over sample time
+		normSpectrum[i] = item / floatSeconds         // Average each magnitude over sample time
 		normSpectrum[i] = math.Log10(normSpectrum[i]) // Normalize each magnitude
 	}
 	normSpectrum = boxcar(normSpectrum, boxcarWindow) // Apply boxcar filter
 	return normSpectrum
 }
 
-func transform(pcmSamples []int16) (spectrum []float64) {
+func transform(pcmSamples []int16) (spectrum []float64, seconds int) {
 	window := fft.Hann(sampleRate)
 	audio := int2float(pcmSamples)
-	seconds := min(len(pcmSamples)/sampleRate, maxtime)
+	seconds = min(len(pcmSamples)/sampleRate, maxtime)
 	spectrum = make([]float64, sampleRate)
 	audioSecond := make([]float64, sampleRate)
 
@@ -255,7 +255,7 @@ func transform(pcmSamples []int16) (spectrum []float64) {
 	}
 
 	spectrum = spectrum[0 : sampleRate/2] // Ignore non-audible 22-44 kHz range; it's a mirror image of the 0-22 kHz range
-	return spectrum
+	return spectrum, seconds
 }
 
 func convert(inputfile string, ffmpegFlag bool) (pcmSamples []int16) {
