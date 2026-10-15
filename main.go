@@ -80,14 +80,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	threads := runtime.GOMAXPROCS(max(*threadFlag, -*threadFlag))
+	_ = runtime.GOMAXPROCS(max(*threadFlag, -*threadFlag))
 	boxcarWindow := (sampleRate / *boxcardxFlag) / 2
 	files := flag.Args()
 	files = matchExt(files) // Discard non-audio files
 
 	// Limit goroutines to # of CPU threads
 	var workerPool errgroup.Group
-	workerPool.SetLimit(threads)
+	workerPool.SetLimit(*threadFlag)
 	var printLock sync.Mutex // Block to prevent concurrent prints
 
 	for _, file := range files {
@@ -293,6 +293,7 @@ func convert(inputfile string, ffmpegFlag bool) (pcmSamples []int16) {
 				return cfg.WithFSConfig(fscfg)
 			},
 		})
+		pcmReceiver.Flush() // Ensure all bytes are written to pcmBuffer
 		if err != nil {
 			println("Embedded ffmpeg PCM encoding failed on file " + filepath.Base(inputfile))
 			panic(err)
